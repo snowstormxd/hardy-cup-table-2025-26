@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>School House Premier League</title>
+<style>
+  .house-pl * { box-sizing: border-box; }
+  .house-pl { --pl-purple:#38003c; --pl-mint:#d0f0cf; --pl-bg:#f5f7fb; --ink:#1b1f23; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", sans-serif; color:var(--ink); background:var(--pl-bg); padding: 16px; border-radius: 16px; border:1px solid #e7e7ef; }
+  .house-pl h2 { margin: 0 0 12px; letter-spacing:.2px; font-weight:800; font-size: clamp(20px,3.2vw,28px); display:flex; align-items:center; gap:10px;}
+  .house-pl .sub { margin:-6px 0 16px; color:#546; font-size:13px; }
+
+  .house-pl .standings { display:grid; grid-template-columns: repeat(6, minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+  .house-pl .card { position:relative; background:white; border-radius:14px; padding:12px; box-shadow: 0 8px 20px rgba(0,0,0,.06); border:1px solid #ececf5; transition:transform .15s ease, box-shadow .15s ease; }
+  .house-pl .badge { position:absolute; top:-10px; right:-10px; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-weight:800; color:#111; }
+  .house-pl .badge.g { background:linear-gradient(#ffd300,#ffea70); }
+  .house-pl .badge.s { background:linear-gradient(#dadfe5,#f5f7f9); }
+  .house-pl .badge.b { background:linear-gradient(#cd7f32,#eaaa75); }
+  .house-pl .house { font-weight:800; font-size:15px; letter-spacing:.4px; display:flex; align-items:center; gap:8px; }
+  .house-pl .dot { width:14px; height:14px; border-radius:50%; display:inline-block; border:2px solid #0002; }
+  .house-pl .pts { font-size:26px; font-weight:900; margin-top:6px; }
+  .house-pl .meta { font-size:12px; opacity:.7; margin-top:2px; }
+
+  .house-pl .controls { display:flex; gap:10px; align-items:center; margin:12px 0; flex-wrap:wrap;}
+  .house-pl input[type="search"]{ padding:8px 10px; border-radius:10px; border:1px solid #dadbe7; background:white; min-width:240px; }
+  .house-pl .pill { padding:8px 10px; border-radius:999px; border:1px solid #dadbe7; background:white; cursor:pointer; font-size:13px; }
+  .house-pl .pill:hover{ background:#f1f4fe; }
+
+  .house-pl .wrap { overflow:auto; border-radius:14px; border:1px solid #ececf5; }
+  .house-pl table { width:100%; border-collapse: separate; border-spacing:0; background:white; min-width:900px; }
+  .house-pl thead th { position:sticky; top:0; z-index:2; text-transform:uppercase; letter-spacing:.6px; font-size:12px; background:var(--pl-purple); color:white; padding:12px 10px; text-align:center; }
+  .house-pl thead .subh { background:#f0f0ff; color:#333; font-weight:700; font-size:12px; position:sticky; top:46px; z-index:2; }
+  .house-pl tbody td { padding:9px 10px; border-bottom:1px solid #f0f0f7; text-align:center; font-weight:600; }
+  .house-pl tbody tr:nth-child(odd){ background:#fafbff; }
+  .house-pl tbody tr:hover { background:#eef6ff; }
+  .house-pl tbody td:first-child, .house-pl thead th:first-child { text-align:left; font-weight:800; }
+  .house-pl tfoot td { background:#f8fafb; font-weight:900; padding:12px 10px; border-top:2px solid #e6e8f2; text-align:center; }
+  .house-pl .clickable { cursor:pointer; }
+  .house-pl .clickable .arrow{ display:inline-block; margin-left:6px; transform:translateY(-1px); font-size:11px; opacity:.7; }
+  .house-pl .tooltip { position:relative; }
+  .house-pl .tooltip:hover::after{
+    content: attr(data-tip);
+    position:absolute; left:50%; top:-6px; transform: translate(-50%, -100%);
+    padding:6px 8px; background:#111; color:#fff; font-size:12px; border-radius:6px; white-space:nowrap; box-shadow:0 4px 10px rgba(0,0,0,.25);
+  }
+  .rankCell { font-weight:900; color:#d33; }
+  .house-band-dot { width:12px; height:12px; display:inline-block; border-radius:3px; margin-right:6px; vertical-align:middle; border:2px solid #0002; }
+
+  @media (max-width:900px){
+    .house-pl .standings{ grid-template-columns: repeat(2, 1fr); }
+    .house-pl thead .subh span{ display:none; }
+    .house-pl table{ min-width:700px; }
+  }
+</style>
+</head>
+<body>
+<div class="house-pl" id="HousePL">
+  <h2><span class="crest" aria-hidden="true"></span> School House Premier League</h2>
+  <div class="sub">Only Golf, Ultimate Frisbee and X Country contain data — all other events display 0 / empty cells.</div>
+
+  <div class="standings" id="standings"></div>
+
+  <div class="controls">
+    <input id="filterInput" type="search" placeholder="Search events (e.g., Rugby, Chess, Sports Day)…" />
+    <button class="pill" id="resetSort">Reset order</button>
+  </div>
+
+  <div class="wrap">
+    <table id="grid" role="table" aria-label="House points table">
+      <thead id="thead"></thead>
+      <tbody></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Houses (order: Austen, Beckingham, Hamonde, Nettles, Powell, Valpy)
+  const HOUSES = [
+    {key:"Austen", color:"#27b24d"},
+    {key:"Beckingham", color:"#e13e3e"},
+    {key:"Hamonde", color:"#7a7d86"},
+    {key:"Nettles", color:"#1e78ff"},
+    {key:"Powell", color:"#ff8c26"},
+    {key:"Valpy", color:"#22c39b"},
+  ];
+
+  // Events: all events included, but only the three specified have data.
+  // All other cells use pos:0 and pts:0 so columns are filled.
+  const EVENTS = [
+    {name:"Art",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Badminton",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Basketball",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Chess",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Cricket",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Debating",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Drama",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Fencing",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Football",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Golf",
+      Austen:{pos:3,pts:2},
+      Beckingham:{pos:4,pts:1.5},
+      Hamonde:{pos:"1=",pts:2.75},
+      Nettles:{pos:"1=",pts:2.75},
+      Powell:{pos:5,pts:1},
+      Valpy:{pos:6,pts:0.5}
+    },
+    {name:"Hockey",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Maths",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Music",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Photography",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Quiz",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Reading",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Rugby",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Shooting",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Softball",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Sports Day",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Squash",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Swimming",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"TableTennis",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Tennis",
+      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
+      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
+    },
+    {name:"Ultimate Frisbee",
+      Austen:{pos:4,pts:3},
+      Beckingham:{pos:5,pts:2},
+      Hamonde:{pos:"2=",pts:4.5},
+      Nettles:{pos:1,pts:6},
+      Powell:{pos:6,pts:1},
+      Valpy:{pos:"2=",pts:4.5}
+    },
+    {name:"X Country",
+      Austen:{pos:2,pts:10},
+      Beckingham:{pos:4,pts:6},
+      Hamonde:{pos:5,pts:4},
+      Nettles:{pos:3,pts:8},
+      Powell:{pos:1,pts:12},
+      Valpy:{pos:6,pts:2}
+    }
+  ];
+
+  // helpers
+  function ptsVal(cell){ return (cell && typeof cell.pts !== 'undefined') ? Number(cell.pts) : 0; }
+  function posText(cell){ return (cell && typeof cell.pos !== 'undefined') ? cell.pos : ""; }
+  function fmt(n){ const s = Number(n).toFixed(2); return s.replace(/\.00$/,''); }
+
+  const thead = document.getElementById('thead');
+  const tbody = document.querySelector('#grid tbody');
+  const tfoot = document.getElementById('tfoot');
+  const standingsWrap = document.getElementById('standings');
+
+  // build the table header dynamically
+  function buildHeader(){
+    const tr1 = document.createElement('tr');
+    tr1.className = 'houseband';
+    const thEvent = document.createElement('th');
+    thEvent.setAttribute('rowspan','2');
+    thEvent.textContent = 'Event';
+    tr1.appendChild(thEvent);
+
+    HOUSES.forEach(h=>{
+      const th = document.createElement('th');
+      th.setAttribute('colspan',2);
+      th.style.background = h.color;
+      th.style.color = '#fff';
+      th.innerHTML = `<span class="house-band-dot" style="background:${h.color}"></span> ${h.key}`;
+      tr1.appendChild(th);
+    });
+
+    const tr2 = document.createElement('tr');
+    tr2.className = 'subh';
+    HOUSES.forEach(h=>{
+      const thPos = document.createElement('th'); thPos.textContent = 'Pos'; tr2.appendChild(thPos);
+      const thPts = document.createElement('th'); thPts.className = 'clickable'; thPts.dataset.sort = h.key;
+      thPts.innerHTML = `Pts <span class="arrow">▾</span>`; tr2.appendChild(thPts);
+    });
+
+    thead.innerHTML = '';
+    thead.appendChild(tr1);
+    thead.appendChild(tr2);
+
+    tr2.querySelectorAll('.clickable').forEach(th=>{
+      th.addEventListener('click', ()=> toggleSortByHouse(th.dataset.sort));
+    });
+  }
+
+  // render table rows
+  function renderRows(rows){
+    tbody.innerHTML = '';
+    rows.forEach(r=>{
+      const tr = document.createElement('tr');
+      let html = `<td>${r.name}</td>`;
+      HOUSES.forEach(h=>{
+        const cell = r[h.key] || {pos:0, pts:0};
+        const tip = `${h.key} • ${r.name}: Pos ${posText(cell)} • ${fmt(ptsVal(cell))} pts`;
+        html += `<td class="tooltip" data-tip="${tip}">${posText(cell)}</td>`;
+        html += `<td class="tooltip" data-tip="${tip}">${fmt(ptsVal(cell))}</td>`;
+      });
+      tr.innerHTML = html;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // compute totals per house
+  function computeTotals(){
+    return HOUSES.map(h=>{
+      const total = EVENTS.reduce((s,r)=> s + ptsVal(r[h.key]), 0);
+      return { key: h.key, color: h.color, pts: Number(total.toFixed(2)) };
+    });
+  }
+
+  // render footer rows and standings
+  function renderFooterAndRanks(){
+    tfoot.innerHTML = '';
+
+    const totalsRow = document.createElement('tr');
+    totalsRow.id = 'totalsRow';
+    let html = `<td>Totals</td>`;
+    const totals = computeTotals();
+    totals.forEach(t=>{
+      html += `<td></td><td>${fmt(t.pts)}</td>`;
+    });
+    totalsRow.innerHTML = html;
+    tfoot.appendChild(totalsRow);
+
+    // ranking
+    const sorted = totals.slice().sort((a,b)=> b.pts - a.pts);
+    const rankMap = {};
+    let lastPts = null, lastRank = 0, idx = 0;
+    sorted.forEach(s=>{
+      idx++;
+      if (s.pts === lastPts) {
+        // same rank as previous
+      } else {
+        lastRank = idx;
+        lastPts = s.pts;
+      }
+      rankMap[s.key] = lastRank;
+    });
+
+    const posRow = document.createElement('tr');
+    posRow.id = 'posRow';
+    let html2 = `<td>Current Posn</td>`;
+    HOUSES.forEach(h=>{
+      html2 += `<td class="rankCell">${rankMap[h.key] || ''}</td><td></td>`;
+    });
+    posRow.innerHTML = html2;
+    tfoot.appendChild(posRow);
+
+    renderStandings(totals);
+  }
+
+  // render standings cards
+  function renderStandings(totals){
+    standingsWrap.innerHTML = '';
+    const sorted = totals.slice().sort((a,b)=> b.pts - a.pts);
+    sorted.forEach((t,i)=>{
+      const card = document.createElement('div');
+      card.className = 'card';
+      const badge = document.createElement('div');
+      badge.className = 'badge ' + (i===0?'g': i===1?'s': i===2?'b':'');
+      badge.textContent = (i+1);
+      const line = document.createElement('div');
+      line.className = 'house';
+      line.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.key}`;
+      const pts = document.createElement('div'); pts.className='pts'; pts.textContent = fmt(t.pts);
+      const meta = document.createElement('div'); meta.className='meta'; meta.textContent = 'Total points';
+      card.appendChild(badge); card.appendChild(line); card.appendChild(pts); card.appendChild(meta);
+      standingsWrap.appendChild(card);
+    });
+  }
+
+  // sorting/filtering
+  let currentSort = null;
+  let sortAsc = false;
+  let originalOrder = EVENTS.slice();
+
+  function toggleSortByHouse(key){
+    if (currentSort === key) sortAsc = !sortAsc;
+    else { currentSort = key; sortAsc = false; }
+
+    const sorted = EVENTS.slice().sort((a,b)=>{
+      const av = ptsVal(a[key]), bv = ptsVal(b[key]);
+      return sortAsc ? av - bv : bv - av;
+    });
+    renderRows(sorted);
+  }
+
+  const filterInput = document.getElementById('filterInput');
+  filterInput.addEventListener('input', ()=>{
+    const q = filterInput.value.trim().toLowerCase();
+    const filtered = EVENTS.filter(r => r.name.toLowerCase().includes(q));
+    renderRows(filtered);
+  });
+
+  document.getElementById('resetSort').addEventListener('click', ()=>{
+    filterInput.value = '';
+    currentSort = null; sortAsc = false;
+    renderRows(originalOrder);
+  });
+
+  // init
+  function init(){
+    buildHeader();
+    renderRows(originalOrder);
+    renderFooterAndRanks();
+  }
+  init();
+
+  // expose for console editing if needed
+  window.HOUSE_PL = { HOUSES, EVENTS, computeTotals, renderRows, renderFooterAndRanks };
+})();
+</script>
+</body>
+</html>

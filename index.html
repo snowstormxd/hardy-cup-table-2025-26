@@ -6,30 +6,35 @@
 <title>School House Premier League</title>
 <style>
   .house-pl * { box-sizing: border-box; }
-  .house-pl { --pl-purple:#38003c; --pl-mint:#d0f0cf; --pl-bg:#f5f7fb; --ink:#1b1f23; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", sans-serif; color:var(--ink); background:var(--pl-bg); padding: 16px; border-radius: 16px; border:1px solid #e7e7ef; }
+  .house-pl { --pl-bg:#f5f7fb; --ink:#1b1f23; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", sans-serif; color:var(--ink); background:var(--pl-bg); padding: 16px; border-radius: 16px; border:1px solid #e7e7ef; }
   .house-pl h2 { margin: 0 0 12px; letter-spacing:.2px; font-weight:800; font-size: clamp(20px,3.2vw,28px); display:flex; align-items:center; gap:10px;}
   .house-pl .sub { margin:-6px 0 16px; color:#546; font-size:13px; }
 
+  /* Standings strip */
   .house-pl .standings { display:grid; grid-template-columns: repeat(6, minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
   .house-pl .card { position:relative; background:white; border-radius:14px; padding:12px; box-shadow: 0 8px 20px rgba(0,0,0,.06); border:1px solid #ececf5; transition:transform .15s ease, box-shadow .15s ease; }
+  .house-pl .card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.10); }
   .house-pl .badge { position:absolute; top:-10px; right:-10px; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-weight:800; color:#111; }
   .house-pl .badge.g { background:linear-gradient(#ffd300,#ffea70); }
   .house-pl .badge.s { background:linear-gradient(#dadfe5,#f5f7f9); }
   .house-pl .badge.b { background:linear-gradient(#cd7f32,#eaaa75); }
   .house-pl .house { font-weight:800; font-size:15px; letter-spacing:.4px; display:flex; align-items:center; gap:8px; }
-  .house-pl .dot { width:14px; height:14px; border-radius:50%; display:inline-block; border:2px solid #0002; }
+  .house-pl .dot { width:14px; height:14px; border-radius:50%; display:inline-block; border:2px solid rgba(0,0,0,.12); }
   .house-pl .pts { font-size:26px; font-weight:900; margin-top:6px; }
   .house-pl .meta { font-size:12px; opacity:.7; margin-top:2px; }
 
+  /* Controls */
   .house-pl .controls { display:flex; gap:10px; align-items:center; margin:12px 0; flex-wrap:wrap;}
   .house-pl input[type="search"]{ padding:8px 10px; border-radius:10px; border:1px solid #dadbe7; background:white; min-width:240px; }
   .house-pl .pill { padding:8px 10px; border-radius:999px; border:1px solid #dadbe7; background:white; cursor:pointer; font-size:13px; }
   .house-pl .pill:hover{ background:#f1f4fe; }
 
+  /* Table */
   .house-pl .wrap { overflow:auto; border-radius:14px; border:1px solid #ececf5; }
   .house-pl table { width:100%; border-collapse: separate; border-spacing:0; background:white; min-width:900px; }
-  .house-pl thead th { position:sticky; top:0; z-index:2; text-transform:uppercase; letter-spacing:.6px; font-size:12px; background:var(--pl-purple); color:white; padding:12px 10px; text-align:center; }
+  .house-pl thead th { position:sticky; top:0; z-index:2; text-transform:uppercase; letter-spacing:.6px; font-size:12px; padding:12px 10px; text-align:center; }
   .house-pl thead .subh { background:#f0f0ff; color:#333; font-weight:700; font-size:12px; position:sticky; top:46px; z-index:2; }
+  .house-pl thead tr.houseband th { font-size:13px; padding:10px; text-align:center; }
   .house-pl tbody td { padding:9px 10px; border-bottom:1px solid #f0f0f7; text-align:center; font-weight:600; }
   .house-pl tbody tr:nth-child(odd){ background:#fafbff; }
   .house-pl tbody tr:hover { background:#eef6ff; }
@@ -44,11 +49,12 @@
     padding:6px 8px; background:#111; color:#fff; font-size:12px; border-radius:6px; white-space:nowrap; box-shadow:0 4px 10px rgba(0,0,0,.25);
   }
   .rankCell { font-weight:900; color:#d33; }
-  .house-band-dot { width:12px; height:12px; display:inline-block; border-radius:3px; margin-right:6px; vertical-align:middle; border:2px solid #0002; }
+  .house-band-dot { width:12px; height:12px; display:inline-block; border-radius:3px; margin-right:6px; vertical-align:middle; border:2px solid rgba(0,0,0,.08); }
 
+  /* Mobile tweaks */
   @media (max-width:900px){
     .house-pl .standings{ grid-template-columns: repeat(2, 1fr); }
-    .house-pl thead .subh span{ display:none; }
+    .house-pl thead .subh span{ display:none; } /* tighten 'Pos / Pts' headers on small screens */
     .house-pl table{ min-width:700px; }
   }
 </style>
@@ -76,55 +82,30 @@
 
 <script>
 (function(){
-  // Houses (order: Austen, Beckingham, Hamonde, Nettles, Powell, Valpy)
+  /* UPDATED HOUSE COLOURS (as requested)
+     Keys must match the ones used in EVENTS below.
+  */
   const HOUSES = [
-    {key:"Austen", color:"#27b24d"},
-    {key:"Beckingham", color:"#e13e3e"},
-    {key:"Hamonde", color:"#7a7d86"},
-    {key:"Nettles", color:"#1e78ff"},
-    {key:"Powell", color:"#ff8c26"},
-    {key:"Valpy", color:"#22c39b"},
+    {key:"Austen", color:"#ffeb3b"},    // Yellow
+    {key:"Beckingham", color:"#e53935"},// Red
+    {key:"Hamonde", color:"#4169e1"},   // Royal Blue
+    {key:"Nettles", color:"#add8e6"},   // Light Blue
+    {key:"Powell", color:"#800020"},    // Burgundy
+    {key:"Valpy", color:"#ffffff"},     // White
   ];
 
-  // Events: all events included, but only the three specified have data.
-  // All other cells use pos:0 and pts:0 so columns are filled.
+  // EVENTS: full event list, only Golf / Ultimate Frisbee / X Country contain data;
+  // other cells use pos:0, pts:0.
   const EVENTS = [
-    {name:"Art",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Badminton",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Basketball",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Chess",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Cricket",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Debating",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Drama",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Fencing",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Football",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
+    {name:"Art", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Badminton", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Basketball", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Chess", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Cricket", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Debating", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Drama", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Fencing", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Football", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
     {name:"Golf",
       Austen:{pos:3,pts:2},
       Beckingham:{pos:4,pts:1.5},
@@ -133,62 +114,20 @@
       Powell:{pos:5,pts:1},
       Valpy:{pos:6,pts:0.5}
     },
-    {name:"Hockey",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Maths",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Music",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Photography",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Quiz",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Reading",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Rugby",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Shooting",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Softball",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Sports Day",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Squash",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Swimming",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"TableTennis",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
-    {name:"Tennis",
-      Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0},
-      Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}
-    },
+    {name:"Hockey", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Maths", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Music", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Photography", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Quiz", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Reading", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Rugby", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Shooting", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Softball", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Sports Day", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Squash", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Swimming", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"TableTennis", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
+    {name:"Tennis", Austen:{pos:0,pts:0}, Beckingham:{pos:0,pts:0}, Hamonde:{pos:0,pts:0}, Nettles:{pos:0,pts:0}, Powell:{pos:0,pts:0}, Valpy:{pos:0,pts:0}},
     {name:"Ultimate Frisbee",
       Austen:{pos:4,pts:3},
       Beckingham:{pos:5,pts:2},
@@ -217,7 +156,7 @@
   const tfoot = document.getElementById('tfoot');
   const standingsWrap = document.getElementById('standings');
 
-  // build the table header dynamically
+  // build the table header dynamically and color each house header per HOUSES
   function buildHeader(){
     const tr1 = document.createElement('tr');
     tr1.className = 'houseband';
@@ -230,7 +169,8 @@
       const th = document.createElement('th');
       th.setAttribute('colspan',2);
       th.style.background = h.color;
-      th.style.color = '#fff';
+      // special-case Valpy (white) so text is readable
+      th.style.color = (h.key === 'Valpy') ? '#000' : '#fff';
       th.innerHTML = `<span class="house-band-dot" style="background:${h.color}"></span> ${h.key}`;
       tr1.appendChild(th);
     });
@@ -291,7 +231,7 @@
     totalsRow.innerHTML = html;
     tfoot.appendChild(totalsRow);
 
-    // ranking
+    // ranking (standard competition ranking)
     const sorted = totals.slice().sort((a,b)=> b.pts - a.pts);
     const rankMap = {};
     let lastPts = null, lastRank = 0, idx = 0;
@@ -306,9 +246,10 @@
       rankMap[s.key] = lastRank;
     });
 
+    // NOTE: label changed as requested and made bold
     const posRow = document.createElement('tr');
     posRow.id = 'posRow';
-    let html2 = `<td>Current Posn</td>`;
+    let html2 = `<td><strong>Current Position</strong></td>`;
     HOUSES.forEach(h=>{
       html2 += `<td class="rankCell">${rankMap[h.key] || ''}</td><td></td>`;
     });
@@ -375,7 +316,7 @@
   }
   init();
 
-  // expose for console editing if needed
+  // expose for quick console edits
   window.HOUSE_PL = { HOUSES, EVENTS, computeTotals, renderRows, renderFooterAndRanks };
 })();
 </script>

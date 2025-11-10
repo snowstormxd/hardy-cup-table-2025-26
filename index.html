@@ -169,8 +169,7 @@
       const th = document.createElement('th');
       th.setAttribute('colspan',2);
       th.style.background = h.color;
-      // special-case Valpy (white) so text is readable
-      th.style.color = (h.key === 'Valpy') ? '#000' : '#fff';
+      th.style.color = '#000';
       th.innerHTML = `<span class="house-band-dot" style="background:${h.color}"></span> ${h.key}`;
       tr1.appendChild(th);
     });
